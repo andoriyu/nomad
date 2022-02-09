@@ -1198,17 +1198,19 @@ func TestDeploymentEndpoint_List_Pagination(t *testing.T) {
 	}
 
 	aclToken := mock.CreatePolicyAndToken(t, state, 1100, "test-valid-read",
-		mock.NamespacePolicy(structs.DefaultNamespace, "read", nil)).
+		mock.NamespacePolicy("*", "read", nil)).
 		SecretID
 
 	cases := []struct {
 		name              string
 		namespace         string
 		prefix            string
+		filter            string
 		nextToken         string
 		pageSize          int32
 		expectedNextToken string
 		expectedIDs       []string
+		expectedError     string
 	}{
 		{
 			name:              "test01 size-2 page-1 default NS",
@@ -1257,6 +1259,38 @@ func TestDeploymentEndpoint_List_Pagination(t *testing.T) {
 			nextToken:   "",
 			expectedIDs: []string{},
 		},
+		{
+			name:   "test6 go-bexpr filter",
+			filter: `ID matches "^a+[123]"`,
+			expectedIDs: []string{
+				"aaaa1111-3350-4b4b-d185-0e1992ed43e9",
+				"aaaaaa22-3350-4b4b-d185-0e1992ed43e9",
+				"aaaaaa33-3350-4b4b-d185-0e1992ed43e9",
+			},
+		},
+		{
+			name:              "test7 go-bexpr filter with pagination",
+			filter:            `ID matches "^a+[123]"`,
+			pageSize:          2,
+			expectedNextToken: "aaaaaa33-3350-4b4b-d185-0e1992ed43e9",
+			expectedIDs: []string{
+				"aaaa1111-3350-4b4b-d185-0e1992ed43e9",
+				"aaaaaa22-3350-4b4b-d185-0e1992ed43e9",
+			},
+		},
+		{
+			name:   "test8 go-bexpr filter namespace",
+			filter: `Namespace == "non-default"`,
+			expectedIDs: []string{
+				"aaaaaa33-3350-4b4b-d185-0e1992ed43e9",
+			},
+		},
+		{
+			name:          "test9 incompatible filtering",
+			filter:        `JobID == "example"`,
+			namespace:     "non-default",
+			expectedError: structs.ErrIncompatibleFiltering.Error(),
+		},
 	}
 
 	for _, tc := range cases {
@@ -1266,13 +1300,22 @@ func TestDeploymentEndpoint_List_Pagination(t *testing.T) {
 					Region:    "global",
 					Namespace: tc.namespace,
 					Prefix:    tc.prefix,
+					Filter:    tc.filter,
 					PerPage:   tc.pageSize,
 					NextToken: tc.nextToken,
 				},
 			}
 			req.AuthToken = aclToken
 			var resp structs.DeploymentListResponse
-			require.NoError(t, msgpackrpc.CallWithCodec(codec, "Deployment.List", req, &resp))
+			err := msgpackrpc.CallWithCodec(codec, "Deployment.List", req, &resp)
+			if tc.expectedError == "" {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.expectedError)
+				return
+			}
+
 			gotIDs := []string{}
 			for _, deployment := range resp.Deployments {
 				gotIDs = append(gotIDs, deployment.ID)

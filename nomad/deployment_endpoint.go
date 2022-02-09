@@ -399,6 +399,20 @@ func (d *Deployment) List(args *structs.DeploymentListRequest, reply *structs.De
 		return structs.ErrPermissionDenied
 	}
 
+	if args.Filter != "" {
+		// Check for incompatible filtering.
+		// The namespace is set to default if empty before it reaches here, so
+		// we can't check for an empty string.
+		hasLegacyFilter := args.Prefix != "" ||
+			args.RequestNamespace() != structs.DefaultNamespace
+		if hasLegacyFilter {
+			return structs.ErrIncompatibleFiltering
+		}
+
+		// Use wildcards namespace to apply filter to all deployments.
+		args.Namespace = "*"
+	}
+
 	// Setup the blocking query
 	opts := blockingOptions{
 		queryOpts: &args.QueryOptions,
@@ -419,11 +433,14 @@ func (d *Deployment) List(args *structs.DeploymentListRequest, reply *structs.De
 			}
 
 			var deploys []*structs.Deployment
-			paginator := state.NewPaginator(iter, args.QueryOptions,
+			paginator, err := state.NewPaginator(iter, args.QueryOptions,
 				func(raw interface{}) {
 					deploy := raw.(*structs.Deployment)
 					deploys = append(deploys, deploy)
 				})
+			if err != nil {
+				return err
+			}
 
 			nextToken := paginator.Page()
 			reply.QueryMeta.NextToken = nextToken

@@ -396,6 +396,22 @@ func (e *Eval) List(args *structs.EvalListRequest,
 		return structs.ErrPermissionDenied
 	}
 
+	if args.Filter != "" {
+		// Check for incompatible filtering.
+		// The namespace is set to default if empty before it reaches here, so
+		// we can't check for an empty string.
+		hasLegacyFilter := args.FilterJobID != "" ||
+			args.FilterEvalStatus != "" ||
+			args.Prefix != "" ||
+			args.RequestNamespace() != structs.DefaultNamespace
+		if hasLegacyFilter {
+			return structs.ErrIncompatibleFiltering
+		}
+
+		// Use wildcards namespace to apply filter to all evals.
+		args.Namespace = "*"
+	}
+
 	// Setup the blocking query
 	opts := blockingOptions{
 		queryOpts: &args.QueryOptions,
@@ -423,11 +439,14 @@ func (e *Eval) List(args *structs.EvalListRequest,
 			})
 
 			var evals []*structs.Evaluation
-			paginator := state.NewPaginator(iter, args.QueryOptions,
+			paginator, err := state.NewPaginator(iter, args.QueryOptions,
 				func(raw interface{}) {
 					eval := raw.(*structs.Evaluation)
 					evals = append(evals, eval)
 				})
+			if err != nil {
+				return err
+			}
 
 			nextToken := paginator.Page()
 			reply.QueryMeta.NextToken = nextToken

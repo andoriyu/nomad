@@ -278,6 +278,10 @@ type QueryOptions struct {
 	// paginated lists.
 	PerPage int32
 
+	// Filter specifies the go-bexpr filter expression to be used for
+	// filtering the data prior to returning a response
+	Filter string
+
 	// NextToken is the token used to indicate where to start paging
 	// for queries that support paginated lists. This token should be
 	// the ID of the next object after the last one seen in the
