@@ -2071,7 +2071,7 @@ func (s *nomadSnapshot) persistEvals(sink raft.SnapshotSink,
 	encoder *codec.Encoder) error {
 	// Get all the evaluations
 	ws := memdb.NewWatchSet()
-	evals, err := s.snap.Evals(ws)
+	evals, err := s.snap.Evals(ws, false)
 	if err != nil {
 		return err
 	}

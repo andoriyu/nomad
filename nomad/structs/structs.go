@@ -859,6 +859,8 @@ type EvalDequeueRequest struct {
 type EvalListRequest struct {
 	FilterJobID      string
 	FilterEvalStatus string
+	FilterNamespace  string
+	OrderAscending   bool
 	QueryOptions
 }
 
@@ -871,7 +873,18 @@ func (req *EvalListRequest) ShouldBeFiltered(e *Evaluation) bool {
 	if req.FilterEvalStatus != "" && req.FilterEvalStatus != e.Status {
 		return true
 	}
+	if req.filterNamespace(e.Namespace) {
+		return true
+	}
 	return false
+}
+
+func (req *EvalListRequest) filterNamespace(namespace string) bool {
+	accept := "default"
+	if req.FilterNamespace != "" {
+		accept = req.FilterNamespace
+	}
+	return accept != namespace
 }
 
 // PlanRequest is used to submit an allocation plan to the leader

@@ -3827,7 +3827,7 @@ func TestStateStore_Evals(t *testing.T) {
 	}
 
 	ws := memdb.NewWatchSet()
-	iter, err := state.Evals(ws)
+	iter, err := state.Evals(ws, false)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

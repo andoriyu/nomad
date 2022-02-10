@@ -382,8 +382,7 @@ func (e *Eval) Reap(args *structs.EvalDeleteRequest,
 }
 
 // List is used to get a list of the evaluations in the system
-func (e *Eval) List(args *structs.EvalListRequest,
-	reply *structs.EvalListResponse) error {
+func (e *Eval) List(args *structs.EvalListRequest, reply *structs.EvalListResponse) error {
 	if done, err := e.srv.forward("Eval.List", args, args, reply); done {
 		return err
 	}
@@ -404,12 +403,17 @@ func (e *Eval) List(args *structs.EvalListRequest,
 			// Scan all the evaluations
 			var err error
 			var iter memdb.ResultIterator
-			if args.RequestNamespace() == structs.AllNamespacesSentinel {
-				iter, err = store.Evals(ws)
-			} else if prefix := args.QueryOptions.Prefix; prefix != "" {
-				iter, err = store.EvalsByIDPrefix(ws, args.RequestNamespace(), prefix)
+			namespace := args.RequestNamespace()
+
+			if prefix := args.QueryOptions.Prefix; prefix != "" {
+				fmt.Println("SH EvalsByIDPrefix", "ns:", namespace, "prefix:", prefix)
+				iter, err = store.EvalsByIDPrefix(ws, namespace, prefix)
+			} else if namespace != structs.AllNamespacesSentinel {
+				fmt.Println("SH EvalsByNamespace", "ns:", namespace)
+				iter, err = store.EvalsByNamespace(ws, namespace, args.OrderAscending)
 			} else {
-				iter, err = store.EvalsByNamespace(ws, args.RequestNamespace())
+				fmt.Println("SH Evals", "ascending:", args.OrderAscending)
+				iter, err = store.Evals(ws, args.OrderAscending)
 			}
 			if err != nil {
 				return err

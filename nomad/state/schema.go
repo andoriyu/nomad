@@ -384,7 +384,7 @@ func evalTableSchema() *memdb.TableSchema {
 	return &memdb.TableSchema{
 		Name: "evals",
 		Indexes: map[string]*memdb.IndexSchema{
-			// Primary index is used for direct lookup.
+			// Primary index is used for direct lookup of an evaluation by ID.
 			"id": {
 				Name:         "id",
 				AllowMissing: false,
@@ -394,16 +394,7 @@ func evalTableSchema() *memdb.TableSchema {
 				},
 			},
 
-			"namespace": {
-				Name:         "namespace",
-				AllowMissing: false,
-				Unique:       false,
-				Indexer: &memdb.StringFieldIndex{
-					Field: "Namespace",
-				},
-			},
-
-			// Job index is used to lookup allocations by job
+			// Job index is used to lookup evaluations by job ID.
 			"job": {
 				Name:         "job",
 				AllowMissing: false,
@@ -424,6 +415,38 @@ func evalTableSchema() *memdb.TableSchema {
 							Lowercase: true,
 						},
 					},
+				},
+			},
+
+			// Namespace is used to lookup evaluations by namespace.
+			//
+			// Use a prefix iterator (namespace_prefix) on a Namespace to iterate
+			// those evaluations in order of CreateIndex.
+			"namespace": {
+				Name:         "namespace",
+				AllowMissing: false,
+				Unique:       false,
+				Indexer: &memdb.CompoundIndex{
+					AllowMissing: false,
+					Indexes: []memdb.Indexer{
+						&memdb.StringFieldIndex{
+							Field: "Namespace",
+						},
+						&memdb.UintFieldIndex{
+							Field: "CreateIndex",
+						},
+					},
+				},
+			},
+
+			// Creation index is used for listing evaluations, ordering them by
+			// creation chronology. (Use a reverse iterator for newest first).
+			"creation": {
+				Name:         "creation",
+				AllowMissing: false,
+				Unique:       false,
+				Indexer: &memdb.UintFieldIndex{
+					Field: "CreateIndex",
 				},
 			},
 		},

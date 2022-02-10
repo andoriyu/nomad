@@ -3112,35 +3112,48 @@ func (s *StateStore) EvalsByJob(ws memdb.WatchSet, namespace, jobID string) ([]*
 	return out, nil
 }
 
-// Evals returns an iterator over all the evaluations
-func (s *StateStore) Evals(ws memdb.WatchSet) (memdb.ResultIterator, error) {
+// Evals returns an iterator over all the evaluations in ascending or descending
+// order of CreationIndex as determined by the ascending parameter.
+func (s *StateStore) Evals(ws memdb.WatchSet, ascending bool) (memdb.ResultIterator, error) {
 	txn := s.db.ReadTxn()
 
-	// Walk the entire table
-	iter, err := txn.Get("evals", "id")
+	var it memdb.ResultIterator
+	var err error
+
+	if ascending {
+		it, err = txn.Get("evals", "creation")
+	} else {
+		it, err = txn.GetReverse("evals", "creation")
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
-	ws.Add(iter.WatchCh())
+	ws.Add(it.WatchCh())
 
-	return iter, nil
+	return it, nil
 }
 
-// EvalsByNamespace returns an iterator over all the evaluations in the given
-// namespace
-func (s *StateStore) EvalsByNamespace(ws memdb.WatchSet, namespace string) (memdb.ResultIterator, error) {
+func (s *StateStore) EvalsByNamespace(ws memdb.WatchSet, namespace string, ascending bool) (memdb.ResultIterator, error) {
 	txn := s.db.ReadTxn()
 
-	// Walk the entire table
-	iter, err := txn.Get("evals", "namespace", namespace)
+	var it memdb.ResultIterator
+	var err error
+
+	if ascending {
+		it, err = txn.Get("evals", "namespace_prefix", namespace)
+	} else {
+		it, err = txn.GetReverse("evals", "namespace_prefix")
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
-	ws.Add(iter.WatchCh())
+	ws.Add(it.WatchCh())
 
-	return iter, nil
+	return it, nil
 }
 
 // UpdateAllocsFromClient is used to update an allocation based on input

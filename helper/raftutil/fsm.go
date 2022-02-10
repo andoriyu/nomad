@@ -193,7 +193,7 @@ func StateAsMap(state *state.StateStore) map[string][]interface{} {
 		"CSIPlugins":       toArray(state.CSIPlugins(nil)),
 		"CSIVolumes":       toArray(state.CSIVolumes(nil)),
 		"Deployments":      toArray(state.Deployments(nil)),
-		"Evals":            toArray(state.Evals(nil)),
+		"Evals":            toArray(state.Evals(nil, false)),
 		"Indexes":          toArray(state.Indexes()),
 		"JobSummaries":     toArray(state.JobSummaries(nil)),
 		"JobVersions":      toArray(state.JobVersions(nil)),
