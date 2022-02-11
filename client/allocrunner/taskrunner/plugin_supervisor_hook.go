@@ -201,14 +201,14 @@ func (h *csiPluginSupervisorHook) ensureSupervisorLoop(ctx context.Context) {
 	}()
 
 	socketPath := filepath.Join(h.mountPoint, structs.CSISocketName)
-	t := time.NewTimer(0)
 
-	var client csi.CSIPlugin
-	defer func() {
-		if client != nil {
-			client.Close()
-		}
-	}()
+	client := h.newClient(ctx, socketPath)
+	if client == nil {
+		return // only hit this on shutdown
+	}
+	defer client.Close()
+
+	t := time.NewTimer(0)
 
 	// Step 1: Wait for the plugin to initially become available.
 WAITFORREADY:
@@ -217,7 +217,7 @@ WAITFORREADY:
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			pluginHealthy, err := h.supervisorLoopOnce(ctx, client, socketPath)
+			pluginHealthy, err := h.supervisorLoopOnce(ctx, client)
 			if err != nil || !pluginHealthy {
 				h.logger.Debug("CSI plugin not ready", "error", err)
 
@@ -256,7 +256,7 @@ WAITFORREADY:
 			deregisterPluginFn()
 			return
 		case <-t.C:
-			pluginHealthy, err := h.supervisorLoopOnce(ctx, client, socketPath)
+			pluginHealthy, err := h.supervisorLoopOnce(ctx, client)
 			if err != nil {
 				h.logger.Error("CSI plugin fingerprinting failed", "error", err)
 			}
@@ -284,6 +284,33 @@ WAITFORREADY:
 			// This loop is informational and in some plugins this may be expensive to
 			// validate. We use a longer timeout (30s) to avoid causing undue work.
 			t.Reset(30 * time.Second)
+		}
+	}
+}
+
+func (h *csiPluginSupervisorHook) newClient(ctx context.Context, socketPath string) csi.CSIPlugin {
+	t := time.NewTimer(0)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-t.C:
+			_, err := os.Stat(socketPath)
+			if err != nil {
+				h.logger.Debug("CSI plugin not ready: failed to stat socket", "error", err)
+				t.Reset(5 * time.Second)
+				continue
+			}
+			client, err := csi.NewClient(socketPath, h.logger.Named("csi_client").With(
+				"plugin.name", h.task.CSIPluginConfig.ID,
+				"plugin.type", h.task.CSIPluginConfig.Type))
+			if err != nil {
+				h.logger.Debug("CSI plugin not ready: failed to create gRPC client", "error", err)
+				t.Reset(5 * time.Second)
+				continue
+			}
+			return client
 		}
 	}
 }
@@ -354,29 +381,13 @@ func (h *csiPluginSupervisorHook) registerPlugin(client csi.CSIPlugin, socketPat
 	}, nil
 }
 
-func (h *csiPluginSupervisorHook) supervisorLoopOnce(ctx context.Context, client csi.CSIPlugin, socketPath string) (bool, error) {
-	_, err := os.Stat(socketPath)
-	if err != nil {
-		return false, fmt.Errorf("failed to stat socket: %v", err)
-	}
-
-	client, err = h.newClient(socketPath)
-	if err != nil {
-		return false, fmt.Errorf("failed to create csi client: %v", err)
-	}
-
+func (h *csiPluginSupervisorHook) supervisorLoopOnce(ctx context.Context, client csi.CSIPlugin) (bool, error) {
 	healthy, err := client.PluginProbe(ctx)
 	if err != nil {
 		return false, fmt.Errorf("failed to probe plugin: %v", err)
 	}
 
 	return healthy, nil
-}
-
-func (h *csiPluginSupervisorHook) newClient(socketPath string) (csi.CSIPlugin, error) {
-	return csi.NewClient(socketPath, h.logger.Named("csi_client").With(
-		"plugin.name", h.task.CSIPluginConfig.ID,
-		"plugin.type", h.task.CSIPluginConfig.Type))
 }
 
 // Stop is called after the task has exited and will not be started

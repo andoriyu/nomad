@@ -2,6 +2,7 @@ package csimanager
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
@@ -10,6 +11,7 @@ import (
 )
 
 const managerFingerprintInterval = 30 * time.Second
+const managerFingerprintRetryInterval = 5 * time.Second
 
 // instanceManager is used to manage the fingerprinting and supervision of a
 // single CSI Plugin.
@@ -73,12 +75,7 @@ func newInstanceManager(logger hclog.Logger, eventer TriggerNodeEvent, updater U
 }
 
 func (i *instanceManager) run() {
-	c, err := csi.NewClient(i.info.ConnectionInfo.SocketPath, i.logger)
-	if err != nil {
-		i.logger.Error("failed to setup instance manager client", "error", err)
-		close(i.shutdownCh)
-		return
-	}
+	c := i.newClient(i.shutdownCtx, i.info.ConnectionInfo.SocketPath)
 	i.client = c
 	i.fp.client = c
 
@@ -96,6 +93,9 @@ func (i *instanceManager) setupVolumeManager() {
 	case <-i.shutdownCtx.Done():
 		return
 	case <-i.fp.hadFirstSuccessfulFingerprintCh:
+		// the runLoop goroutine populates i.client but we never get
+		// the first fingerprint until after it's been populated, so
+		// this is safe
 		i.volumeManager = newVolumeManager(i.logger, i.eventer, i.client, i.mountPoint, i.containerMountPoint, i.fp.requiresStaging)
 		i.logger.Debug("volume manager setup complete")
 		close(i.volumeManagerSetupCh)
@@ -125,8 +125,10 @@ func (i *instanceManager) runLoop() {
 		select {
 		case <-i.shutdownCtx.Done():
 			if i.client != nil {
-				i.client.Close()
-				i.client = nil
+				defer func() {
+					i.client.Close()
+					i.client = nil
+				}()
 			}
 
 			// run one last fingerprint so that we mark the plugin as unhealthy.
@@ -156,4 +158,29 @@ func (i *instanceManager) runLoop() {
 func (i *instanceManager) shutdown() {
 	i.shutdownCtxCancelFn()
 	<-i.shutdownCh
+}
+
+func (i *instanceManager) newClient(ctx context.Context, socketPath string) csi.CSIPlugin {
+	t := time.NewTimer(0)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-t.C:
+			_, err := os.Stat(socketPath)
+			if err != nil {
+				i.logger.Debug("CSI plugin not ready: failed to stat socket", "error", err)
+				t.Reset(5 * time.Second)
+				continue
+			}
+			client, err := csi.NewClient(socketPath, i.logger)
+			if err != nil {
+				i.logger.Debug("CSI plugin not ready: failed to create gRPC client", "error", err)
+				t.Reset(5 * time.Second)
+				continue
+			}
+			return client
+		}
+	}
 }
