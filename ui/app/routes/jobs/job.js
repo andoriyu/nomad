@@ -11,7 +11,6 @@ export default class JobRoute extends Route {
   @service token;
 
   serialize(model) {
-    debugger;
     return { job_name: JSON.parse(model.get('id')).join('@') };
   }
 

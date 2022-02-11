@@ -39,9 +39,10 @@ export default function moduleForJob(
       server.create('node');
       job = jobFactory();
       if (!job.namespace || job.namespace === 'default') {
-        await JobDetail.visit({ id: job.id });
+        job.namespace = 'default';
+        await JobDetail.visit({ id: `${job.id}@default` });
       } else {
-        await JobDetail.visit({ id: job.id, namespace: job.namespace });
+        await JobDetail.visit({ id: `${job.id}@${job.namespace}` });
       }
 
       const hasClientStatus = ['system', 'sysbatch'].includes(job.type);
@@ -51,52 +52,28 @@ export default function moduleForJob(
     });
 
     test('visiting /jobs/:job_id', async function (assert) {
-      assert.equal(
-        currentURL(),
-        urlWithNamespace(`/jobs/${encodeURIComponent(job.id)}`, job.namespace)
-      );
+      assert.equal(currentRouteName(), `jobs.job.index`);
       assert.equal(document.title, `Job ${job.name} - Nomad`);
     });
 
     test('the subnav links to overview', async function (assert) {
       await JobDetail.tabFor('overview').visit();
-      assert.equal(
-        currentURL(),
-        urlWithNamespace(`/jobs/${encodeURIComponent(job.id)}`, job.namespace)
-      );
+      assert.equal(currentRouteName(), `jobs.job.index`);
     });
 
     test('the subnav links to definition', async function (assert) {
       await JobDetail.tabFor('definition').visit();
-      assert.equal(
-        currentURL(),
-        urlWithNamespace(
-          `/jobs/${encodeURIComponent(job.id)}/definition`,
-          job.namespace
-        )
-      );
+      assert.equal(currentRouteName(), `jobs.job.definition`);
     });
 
     test('the subnav links to versions', async function (assert) {
       await JobDetail.tabFor('versions').visit();
-      assert.equal(
-        currentURL(),
-        urlWithNamespace(
-          `/jobs/${encodeURIComponent(job.id)}/versions`,
-          job.namespace
-        )
-      );
+      assert.equal(currentRouteName(), `jobs.job.versions`);
     });
 
     test('the subnav links to evaluations', async function (assert) {
       await JobDetail.tabFor('evaluations').visit();
-      assert.equal(
-        currentURL(),
-        urlWithNamespace(
-          `/jobs/${encodeURIComponent(job.id)}/evaluations`,
-          job.namespace
-        )
-      );
+      assert.equal(currentRouteName(), `jobs.job.evaluations`);
     });
 
     test('the title buttons are dependent on job status', async function (assert) {
@@ -130,7 +107,7 @@ export default function moduleForJob(
         await allocationRow.visitRow();
 
         assert.equal(
-          currentURL(),
+          currentRouteName(),
           `/allocations/${allocationId}`,
           'Allocation row links to allocation detail'
         );
@@ -145,7 +122,7 @@ export default function moduleForJob(
         const encodedStatus = encodeURIComponent(JSON.stringify([status]));
         const expectedURL = new URL(
           urlWithNamespace(
-            `/jobs/${job.name}@default/clients?status=${encodedStatus}`,
+            `/jobs/${job.name}@${job.namespace}/clients?status=${encodedStatus}`,
             job.namespace
           ),
           window.location
@@ -340,7 +317,7 @@ export function moduleForJobWithClientStatus(
       });
 
       test('/jobs/job/clients route is protected with authorization logic', async function (assert) {
-        await visit(`/jobs/${job.id}/clients`);
+        await visit(`/jobs/${job.id}@default/clients`);
 
         assert.equal(
           currentRouteName(),

@@ -39,7 +39,7 @@ module('Acceptance | job allocations', function (hooks) {
     });
     allocations = server.schema.allocations.where({ jobId: job.id }).models;
 
-    await Allocations.visit({ id: job.id });
+    await Allocations.visit({ id: `${job.id}@default` });
     await a11yAudit(assert);
   });
 
@@ -49,8 +49,7 @@ module('Acceptance | job allocations', function (hooks) {
     });
     allocations = server.schema.allocations.where({ jobId: job.id }).models;
 
-    await Allocations.visit({ id: job.id });
-
+    await Allocations.visit({ id: `${job.id}@default` });
     assert.equal(
       Allocations.allocations.length,
       Allocations.pageSize - 1,
@@ -75,12 +74,12 @@ module('Acceptance | job allocations', function (hooks) {
     server.createList('allocation', Allocations.pageSize - 1);
     allocations = server.schema.allocations.where({ jobId: job.id }).models;
 
-    await Allocations.visit({ id: job.id });
+    await Allocations.visit({ id: `${job.id}@default` });
     await Allocations.sortBy('taskGroupName');
 
     assert.equal(
       currentURL(),
-      `/jobs/${job.id}/allocations?sort=taskGroupName`,
+      `/jobs/${job.id}@default/allocations?sort=taskGroupName`,
       'the URL persists the sort parameter'
     );
     const sortedAllocations = allocations.sortBy('taskGroup').reverse();
@@ -99,7 +98,7 @@ module('Acceptance | job allocations', function (hooks) {
 
     allocations = server.schema.allocations.where({ jobId: job.id }).models;
 
-    await Allocations.visit({ id: job.id });
+    await Allocations.visit({ id: `${job.id}@default` });
     await Allocations.search('ffffff');
 
     assert.equal(
@@ -114,7 +113,7 @@ module('Acceptance | job allocations', function (hooks) {
 
     allocations = server.schema.allocations.where({ jobId: job.id }).models;
 
-    await Allocations.visit({ id: job.id });
+    await Allocations.visit({ id: `${job.id}@default` });
     await Allocations.search('^nothing will ever match this long regex$');
 
     assert.equal(
@@ -127,18 +126,18 @@ module('Acceptance | job allocations', function (hooks) {
   });
 
   test('when the job for the allocations is not found, an error message is shown, but the URL persists', async function (assert) {
-    await Allocations.visit({ id: 'not-a-real-job' });
+    await Allocations.visit({ id: 'not-a-real-job@default' });
 
     assert.equal(
       server.pretender.handledRequests
         .filter((request) => !request.url.includes('policy'))
         .findBy('status', 404).url,
-      '/v1/job/not-a-real-job',
+      '/v1/job/not-a-real-job@default',
       'A request to the nonexistent job is made'
     );
     assert.equal(
       currentURL(),
-      '/jobs/not-a-real-job/allocations',
+      '/jobs/not-a-real-job@default/allocations',
       'The URL persists'
     );
     assert.ok(Allocations.error.isPresent, 'Error message is shown');
@@ -157,7 +156,7 @@ module('Acceptance | job allocations', function (hooks) {
       ['pending', 'running', 'complete', 'failed', 'lost'].forEach((s) => {
         server.createList('allocation', 5, { clientStatus: s });
       });
-      await Allocations.visit({ id: job.id });
+      await Allocations.visit({ id: `${job.id}@default` });
     },
     filter: (alloc, selection) =>
       alloc.jobId == job.id && selection.includes(alloc.clientStatus),
@@ -180,7 +179,7 @@ module('Acceptance | job allocations', function (hooks) {
       server.createList('node', 5);
       server.createList('allocation', 20);
 
-      await Allocations.visit({ id: job.id });
+      await Allocations.visit({ id: `${job.id}@default` });
     },
     filter: (alloc, selection) =>
       alloc.jobId == job.id && selection.includes(alloc.nodeId.split('-')[0]),
@@ -203,7 +202,7 @@ module('Acceptance | job allocations', function (hooks) {
         groupsCount: 5,
       });
 
-      await Allocations.visit({ id: job.id });
+      await Allocations.visit({ id: `${job.id}@default` });
     },
     filter: (alloc, selection) =>
       alloc.jobId == job.id && selection.includes(alloc.taskGroup),
@@ -298,7 +297,7 @@ function testFacet(
 
     assert.equal(
       currentURL(),
-      `/jobs/${job.id}/allocations?${paramName}=${encodeURIComponent(
+      `/jobs/${job.id}@default/allocations?${paramName}=${encodeURIComponent(
         JSON.stringify(selection)
       )}`,
       'URL has the correct query param key and value'

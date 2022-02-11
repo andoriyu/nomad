@@ -203,7 +203,7 @@ moduleForJob(
   {
     'the subnav links to deployment': async (job, assert) => {
       await JobDetail.tabFor('deployments').visit();
-      assert.equal(currentURL(), `/jobs/${job.id}/deployments`);
+      assert.equal(currentURL(), `/jobs/${job.id}@default/deployments`);
     },
     'when the job is not found, an error message is shown, but the URL persists':
       async (job, assert) => {

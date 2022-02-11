@@ -89,7 +89,10 @@ module('Acceptance | task group detail', function (hooks) {
       .reduce(sum, 0);
     const totalDisk = taskGroup.ephemeralDisk.SizeMB;
 
-    await TaskGroup.visit({ id: job.id, name: taskGroup.name });
+    await TaskGroup.visit({
+      id: `${job.id}@default`,
+      name: taskGroup.name,
+    });
 
     assert.equal(TaskGroup.tasksCount, `# Tasks ${tasks.length}`, '# Tasks');
     assert.equal(
@@ -104,7 +107,7 @@ module('Acceptance | task group detail', function (hooks) {
       totalMemoryMaxAddendum = ` (${formatScheduledBytes(
         totalMemoryMax,
         'MiB'
-      )} Max)`;
+      )}Max)`;
     }
 
     assert.equal(
@@ -239,7 +242,7 @@ module('Acceptance | task group detail', function (hooks) {
 
     assert.equal(
       currentURL(),
-      `/jobs/${job.id}/scaling?namespace=${SCALE_AND_WRITE_NAMESPACE}`
+      `/jobs/${job.id}@default/scaling?namespace=${SCALE_AND_WRITE_NAMESPACE}`
     );
     assert.notOk(TaskGroup.countStepper.increment.isDisabled);
 
@@ -558,7 +561,7 @@ module('Acceptance | task group detail', function (hooks) {
     );
     assert.equal(
       currentURL(),
-      `/jobs/${job.id}/not-a-real-task-group`,
+      `/jobs/${job.id}@default/not-a-real-task-group`,
       'The URL persists'
     );
     assert.ok(TaskGroup.error.isPresent, 'Error message is shown');
@@ -806,9 +809,9 @@ function testFacet(
 
     assert.equal(
       currentURL(),
-      `/jobs/${job.id}/${taskGroup.name}?${paramName}=${encodeURIComponent(
-        JSON.stringify(selection)
-      )}`,
+      `/jobs/${job.id}@default/${
+        taskGroup.name
+      }?${paramName}=${encodeURIComponent(JSON.stringify(selection))}`,
       'URL has the correct query param key and value'
     );
   });

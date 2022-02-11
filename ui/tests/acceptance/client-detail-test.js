@@ -305,7 +305,7 @@ module('Acceptance | client detail', function (hooks) {
 
     assert.equal(
       currentURL(),
-      `/jobs/${job.id}@default`,
+      `/jobs/${job.id}@${job.namespace}`,
       'Allocation rows link to the job detail page for the allocation'
     );
   });

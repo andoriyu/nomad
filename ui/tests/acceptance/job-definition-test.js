@@ -17,7 +17,7 @@ module('Acceptance | job definition', function (hooks) {
     server.create('node');
     server.create('job');
     job = server.db.jobs[0];
-    await Definition.visit({ id: job.id });
+    await Definition.visit({ id: `${job.id}@default` });
   });
 
   test('it passes an accessibility audit', async function (assert) {
@@ -27,7 +27,7 @@ module('Acceptance | job definition', function (hooks) {
   });
 
   test('visiting /jobs/:job_id/definition', async function (assert) {
-    assert.equal(currentURL(), `/jobs/${job.id}/definition`);
+    assert.equal(currentURL(), `/jobs/${job.id}@default/definition`);
     assert.equal(document.title, `Job ${job.name} definition - Nomad`);
   });
 

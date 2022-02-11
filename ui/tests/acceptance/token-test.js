@@ -59,7 +59,7 @@ module('Acceptance | tokens', function (hooks) {
   skip('the x-nomad-token header gets sent with requests once it is set', async function (assert) {
     const { secretId } = managementToken;
 
-    await JobDetail.visit({ id: job.id });
+    await JobDetail.visit({ id: `${job.id}@default` });
     await ClientDetail.visit({ id: node.id });
 
     assert.ok(
@@ -76,7 +76,7 @@ module('Acceptance | tokens', function (hooks) {
     await Tokens.visit();
     await Tokens.secret(secretId).submit();
 
-    await JobDetail.visit({ id: job.id });
+    await JobDetail.visit({ id: `${job.id}@default` });
     await ClientDetail.visit({ id: node.id });
 
     const newRequests = server.pretender.handledRequests.slice(requestPosition);

@@ -35,6 +35,13 @@ export default class Job extends Model {
   @attr() periodicDetails;
   @attr() parameterizedDetails;
 
+  @computed('plainId')
+  get idWithNamespace() {
+    // does this handle default namespace -- I think the backend handles this for us
+    // but the client would always need to recreate that logic
+    return `${this.plainId}@${this.belongsTo('namespace').id()}`;
+  }
+
   @computed('periodic', 'parameterized', 'dispatched')
   get hasChildren() {
     return this.periodic || (this.parameterized && !this.dispatched);

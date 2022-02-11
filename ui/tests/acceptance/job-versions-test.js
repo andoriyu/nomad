@@ -178,7 +178,7 @@ module('Acceptance | job versions (with client token)', function (hooks) {
     const clientToken = server.create('token');
     window.localStorage.nomadTokenSecret = clientToken.secretId;
 
-    await Versions.visit({ id: job.id });
+    await Versions.visit({ id: `${job.id}@default` });
   });
 
   test('reversion buttons are disabled when the token lacks permissions', async function (assert) {

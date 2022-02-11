@@ -76,7 +76,7 @@ module('Acceptance | allocation detail', function (hooks) {
     await Allocation.details.visitJob();
     assert.equal(
       currentURL(),
-      `/jobs/${job.id}@default`,
+      `/jobs/${job.id}@${job.namespace}`,
       'Job link navigates to the job'
     );
 
