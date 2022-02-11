@@ -398,39 +398,9 @@ func (e *Eval) List(args *structs.EvalListRequest,
 
 	if args.Filter != "" {
 		// Check for incompatible filtering.
-		// The namespace is set to default if empty before it reaches here, so
-		// we can't check for an empty string.
-		hasLegacyFilter := args.FilterJobID != "" ||
-			args.FilterEvalStatus != "" ||
-			args.Prefix != "" ||
-			args.RequestNamespace() != structs.DefaultNamespace
+		hasLegacyFilter := args.FilterJobID != "" || args.FilterEvalStatus != ""
 		if hasLegacyFilter {
 			return structs.ErrIncompatibleFiltering
-		}
-
-		// Use state store index if possible.
-		useIndex := false
-		matches := listFilterSimpleEqRegex.FindStringSubmatch(args.Filter)
-
-		if len(matches) == 3 {
-			prop := matches[1]
-			value := matches[2]
-
-			switch prop {
-			case "ID":
-				useIndex = true
-				args.Prefix = value
-			case "Namespace":
-				useIndex = true
-				args.Namespace = value
-			}
-		}
-
-		if useIndex {
-			args.Filter = ""
-		} else {
-			// Use wildcards namespace to apply filter to all evals.
-			args.Namespace = "*"
 		}
 	}
 

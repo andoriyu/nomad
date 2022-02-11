@@ -6,7 +6,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 
 	memdb "github.com/hashicorp/go-memdb"
@@ -20,11 +19,6 @@ import (
 // normalization of Plan in SubmitPlan, and the denormalization raft log entry committed
 // in ApplyPlanResultsRequest
 var MinVersionPlanNormalization = version.Must(version.NewVersion("0.9.2"))
-
-// listFilterSimpleEqRegex matches go-bexpr filters with a single equality
-// check of a string value. It is used to determine if a state store index can
-// be used rather than filtering elements individually.
-var listFilterSimpleEqRegex = regexp.MustCompile(`^(.+)\s+==\s+"(.+)"$`)
 
 // ensurePath is used to make sure a path exists
 func ensurePath(path string, dir bool) error {

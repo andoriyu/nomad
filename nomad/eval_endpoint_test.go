@@ -1096,16 +1096,23 @@ func TestEvalEndpoint_List_PaginationFiltering(t *testing.T) {
 			},
 		},
 		{
-			name:   "test16 go-bexpr filter namespace",
-			filter: `Namespace == "non-default"`,
+			name:      "test16 go-bexpr filter namespace",
+			namespace: "non-default",
+			filter:    `ID contains "aaa"`,
 			expectedIDs: []string{
 				"aaaaaa33-3350-4b4b-d185-0e1992ed43e9",
 			},
 		},
 		{
-			name:          "test17 incompatible filtering",
+			name:        "test17 go-bexpr wrong namespace",
+			namespace:   "default",
+			filter:      `Namespace == "non-default"`,
+			expectedIDs: []string{},
+		},
+		{
+			name:          "test18 incompatible filtering",
 			filter:        `JobID == "example"`,
-			namespace:     "non-default",
+			filterStatus:  "complete",
 			expectedError: structs.ErrIncompatibleFiltering.Error(),
 		},
 	}

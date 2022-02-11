@@ -1253,15 +1253,16 @@ func TestDeploymentEndpoint_List_Pagination(t *testing.T) {
 			},
 		},
 		{
-			name:        "test5 no valid results with filters and prefix",
+			name:        "test05 no valid results with filters and prefix",
 			prefix:      "cccc",
 			pageSize:    2,
 			nextToken:   "",
 			expectedIDs: []string{},
 		},
 		{
-			name:   "test6 go-bexpr filter",
-			filter: `ID matches "^a+[123]"`,
+			name:      "test06 go-bexpr filter",
+			namespace: "*",
+			filter:    `ID matches "^a+[123]"`,
 			expectedIDs: []string{
 				"aaaa1111-3350-4b4b-d185-0e1992ed43e9",
 				"aaaaaa22-3350-4b4b-d185-0e1992ed43e9",
@@ -1269,7 +1270,8 @@ func TestDeploymentEndpoint_List_Pagination(t *testing.T) {
 			},
 		},
 		{
-			name:              "test7 go-bexpr filter with pagination",
+			name:              "test07 go-bexpr filter with pagination",
+			namespace:         "*",
 			filter:            `ID matches "^a+[123]"`,
 			pageSize:          2,
 			expectedNextToken: "aaaaaa33-3350-4b4b-d185-0e1992ed43e9",
@@ -1279,17 +1281,18 @@ func TestDeploymentEndpoint_List_Pagination(t *testing.T) {
 			},
 		},
 		{
-			name:   "test8 go-bexpr filter namespace",
-			filter: `Namespace == "non-default"`,
+			name:      "test08 go-bexpr filter in namespace",
+			namespace: "non-default",
+			filter:    `Status == "cancelled"`,
 			expectedIDs: []string{
 				"aaaaaa33-3350-4b4b-d185-0e1992ed43e9",
 			},
 		},
 		{
-			name:          "test9 incompatible filtering",
-			filter:        `JobID == "example"`,
-			namespace:     "non-default",
-			expectedError: structs.ErrIncompatibleFiltering.Error(),
+			name:        "test09 go-bexpr wrong namespace",
+			namespace:   "default",
+			filter:      `Namespace == "non-default"`,
+			expectedIDs: []string{},
 		},
 	}
 
