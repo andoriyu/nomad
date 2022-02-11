@@ -55,6 +55,11 @@ const (
 	// up evals for delayed rescheduling
 	reschedulingFollowupEvalDesc = "created for delayed rescheduling"
 
+	// disconnectTimeoutFollowupEvalDesc is the description used when creating follow
+	// up evals for allocations that be should be stopped after its disconnect
+	// timeout has passed.
+	disconnectTimeoutFollowupEvalDesc = "created delayed stop after disconnect timeout"
+
 	// maxPastRescheduleEvents is the maximum number of past reschedule event
 	// that we track when unlimited rescheduling is enabled
 	maxPastRescheduleEvents = 5
@@ -148,7 +153,7 @@ func (s *GenericScheduler) Process(eval *structs.Evaluation) (err error) {
 		structs.EvalTriggerPeriodicJob, structs.EvalTriggerMaxPlans,
 		structs.EvalTriggerDeploymentWatcher, structs.EvalTriggerRetryFailedAlloc,
 		structs.EvalTriggerFailedFollowUp, structs.EvalTriggerPreemption,
-		structs.EvalTriggerScaling:
+		structs.EvalTriggerScaling, structs.EvalTriggerMaxDisconnectTimeout:
 	default:
 		desc := fmt.Sprintf("scheduler cannot handle '%s' evaluation reason",
 			eval.TriggeredBy)
@@ -403,6 +408,16 @@ func (s *GenericScheduler) computeJobAllocs() error {
 
 	// Handle the annotation updates
 	for _, update := range results.attributeUpdates {
+		s.ctx.Plan().AppendAlloc(update, nil)
+	}
+
+	// Handle disconnect updates
+	for _, update := range results.disconnectUpdates {
+		s.ctx.Plan().AppendAlloc(update, nil)
+	}
+
+	// Handle reconnect updates
+	for _, update := range results.reconnectUpdates {
 		s.ctx.Plan().AppendAlloc(update, nil)
 	}
 
