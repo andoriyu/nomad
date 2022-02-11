@@ -409,6 +409,30 @@ func (d *Deployment) List(args *structs.DeploymentListRequest, reply *structs.De
 			return structs.ErrIncompatibleFiltering
 		}
 
+		// Use state store index if possible.
+		useIndex := false
+		matches := listFilterSimpleEqRegex.FindStringSubmatch(args.Filter)
+
+		if len(matches) == 3 {
+			prop := matches[1]
+			value := matches[2]
+
+			switch prop {
+			case "ID":
+				useIndex = true
+				args.Prefix = value
+			case "Namespace":
+				useIndex = true
+				args.Namespace = value
+			}
+		}
+
+		if useIndex {
+			args.Filter = ""
+		} else {
+			// Use wildcards namespace to apply filter to all evals.
+			args.Namespace = "*"
+		}
 		// Use wildcards namespace to apply filter to all deployments.
 		args.Namespace = "*"
 	}
