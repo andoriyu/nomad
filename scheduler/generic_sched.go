@@ -33,6 +33,9 @@ const (
 	// allocLost is the status used when an allocation is lost
 	allocLost = "alloc is lost since its node is down"
 
+	// allocUnknown is the status used when an allocation is unknown
+	allocUnknown = "alloc is unknown since its node is disconnected"
+
 	// allocInPlace is the status used when speculating on an in-place update
 	allocInPlace = "alloc updating in-place"
 
@@ -143,6 +146,10 @@ func (s *GenericScheduler) Process(eval *structs.Evaluation) (err error) {
 
 	// Update our logger with the eval's information
 	s.logger = s.logger.With("eval_id", eval.ID, "job_id", eval.JobID, "namespace", eval.Namespace)
+
+	if eval.TriggeredBy == structs.EvalTriggerNodeUpdate {
+		s.logger.Debug("got here")
+	}
 
 	// Verify the evaluation trigger reason is understood
 	switch eval.TriggeredBy {
@@ -413,7 +420,7 @@ func (s *GenericScheduler) computeJobAllocs() error {
 
 	// Handle disconnect updates
 	for _, update := range results.disconnectUpdates {
-		s.ctx.Plan().AppendAlloc(update, nil)
+		s.ctx.Plan().AppendUnknownAlloc(update)
 	}
 
 	// Handle reconnect updates

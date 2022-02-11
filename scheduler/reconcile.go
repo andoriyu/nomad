@@ -1328,6 +1328,7 @@ func (a *allocReconciler) createTimeoutLaterEvals(disconnecting allocSet, tgName
 			// and the unknown ClientStatus.
 			updatedAlloc := timeoutInfo.alloc.Copy()
 			updatedAlloc.ClientStatus = structs.AllocClientStatusUnknown
+			updatedAlloc.ClientDescription = allocUnknown
 			updatedAlloc.FollowupEvalID = eval.ID
 			a.result.disconnectUpdates[updatedAlloc.ID] = updatedAlloc
 

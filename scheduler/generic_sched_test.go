@@ -3126,44 +3126,46 @@ func TestServiceSched_StopAfterClientDisconnect(t *testing.T) {
 	}
 }
 
-func TestServiceSched_MaxClientDisconnect(t *testing.T) {
+// Tests that a client disconnect generates attribute updates and follow up evals.
+func TestServiceSched_ClientDisconnect_Creates_Updates_and_Evals(t *testing.T) {
 	cases := []struct {
-		timeout     time.Duration
-		when        time.Time
+		timeout time.Duration
+		// when        time.Time
 		rescheduled bool
 	}{
 		{
+			timeout:     10 * time.Minute,
 			rescheduled: true,
 		},
-		{
-			timeout:     1 * time.Second,
-			rescheduled: false,
-		},
-		{
-			timeout:     1 * time.Second,
-			when:        time.Now().UTC().Add(-10 * time.Second),
-			rescheduled: true,
-		},
-		{
-			timeout:     1 * time.Second,
-			when:        time.Now().UTC().Add(10 * time.Minute),
-			rescheduled: false,
-		},
+		//{
+		//	timeout:     0 * time.Second,
+		//	rescheduled: true,
+		//},
+		//{
+		//	timeout:     1 * time.Second,
+		//	//when:        time.Now().UTC().Add(-10 * time.Second),
+		//	rescheduled: true,
+		//},
+		//{
+		//	timeout:     1 * time.Second,
+		//	//when:        time.Now().UTC().Add(10 * time.Minute),
+		//	rescheduled: false,
+		//},
 	}
 
 	for i, tc := range cases {
 		t.Run(fmt.Sprintf(""), func(t *testing.T) {
 			h := NewHarness(t)
 
-			// Node, which is down
+			// Node, which is ready
 			node := mock.Node()
-			node.Status = structs.NodeStatusDisconnected
+			node.Status = structs.NodeStatusReady
 			require.NoError(t, h.State.UpsertNode(structs.MsgTypeTestSetup, h.NextIndex(), node))
 
 			// Job with allocations and ignore_client_disconnect
 			job := mock.Job()
 			job.TaskGroups[0].Count = 1
-			job.TaskGroups[0].IgnoreClientDisconnect = &tc.timeout
+			job.TaskGroups[0].MaxClientDisconnect = &tc.timeout
 			require.NoError(t, h.State.UpsertJob(structs.MsgTypeTestSetup, h.NextIndex(), job))
 
 			// Alloc for the running group
@@ -3174,22 +3176,29 @@ func TestServiceSched_MaxClientDisconnect(t *testing.T) {
 			alloc.Name = fmt.Sprintf("my-job.web[%d]", i)
 			alloc.DesiredStatus = structs.AllocDesiredStatusRun
 			alloc.ClientStatus = structs.AllocClientStatusRunning
-			if !tc.when.IsZero() {
-				alloc.AllocStates = []*structs.AllocState{{
-					Field: structs.AllocStateFieldClientStatus,
-					Value: structs.AllocClientStatusLost,
-					Time:  tc.when,
-				}}
-			}
+			//if !tc.when.IsZero() {
+			//	alloc.AllocStates = []*structs.AllocState{{
+			//		Field: structs.AllocStateFieldClientStatus,
+			//		Value: structs.AllocClientStatusLost,
+			//		Time:  tc.when,
+			//	}}
+			//}
 			allocs := []*structs.Allocation{alloc}
 			require.NoError(t, h.State.UpsertAllocs(structs.MsgTypeTestSetup, h.NextIndex(), allocs))
+
+			// Now disconnect the node
+			node.Status = structs.NodeStatusDisconnected
+			require.NoError(t, h.State.UpsertNode(structs.MsgTypeTestSetup, h.NextIndex(), node))
+
+			t.Log("nodeID: " + node.ID)
+			t.Log("allocID: " + alloc.ID)
 
 			// Create a mock evaluation to deal with disconnect
 			evals := []*structs.Evaluation{{
 				Namespace:   structs.DefaultNamespace,
 				ID:          uuid.Generate(),
 				Priority:    50,
-				TriggeredBy: structs.EvalTriggerMaxDisconnectTimeout,
+				TriggeredBy: structs.EvalTriggerNodeUpdate,
 				JobID:       job.ID,
 				NodeID:      node.ID,
 				Status:      structs.EvalStatusPending,
@@ -3208,12 +3217,8 @@ func TestServiceSched_MaxClientDisconnect(t *testing.T) {
 			e := h.CreateEvals[0]
 			require.Equal(t, eval.ID, e.PreviousEval)
 
-			if tc.rescheduled {
-				require.Equal(t, "blocked", e.Status)
-			} else {
-				require.Equal(t, "pending", e.Status)
-				require.NotEmpty(t, e.WaitUntil)
-			}
+			require.Equal(t, "pending", e.Status)
+			require.NotEmpty(t, e.WaitUntil)
 
 			// This eval is still being inserted in the state store
 			ws := memdb.NewWatchSet()
@@ -3230,14 +3235,28 @@ func TestServiceSched_MaxClientDisconnect(t *testing.T) {
 				require.NoError(t, err)
 			})
 
+			require.Len(t, h.Plans[0].NodeUpdate[node.ID], 1)
+			// LEFT OFF HERE>  Somehow the ClientStatus is still running.
+			require.Equal(t, alloc.ID, h.Plans[0].NodeUpdate[node.ID][0].ID)
+
+			testutil.WaitForResult(func() (bool, error) {
+				err = h.State.UpsertAllocs(structs.MsgTypeTestSetup, h.NextIndex(), h.Plans[0].NodeUpdate[node.ID])
+				require.NoError(t, err, "plan.NodeUpdate")
+				return true, nil
+			}, func(err error) {
+				require.NoError(t, err)
+			})
+
 			alloc, err = h.State.AllocByID(ws, alloc.ID)
 			require.NoError(t, err)
 
-			// Allocations have been transitioned to lost
-			require.Equal(t, structs.AllocDesiredStatusStop, alloc.DesiredStatus)
-			require.Equal(t, structs.AllocClientStatusLost, alloc.ClientStatus)
+			// Allocations have been transitioned to unknown
+			require.Equal(t, structs.AllocDesiredStatusRun, alloc.DesiredStatus)
+			require.Equal(t, structs.AllocClientStatusUnknown, alloc.ClientStatus)
 			// At least 1, 2 if we manually set the tc.when
-			require.NotEmpty(t, alloc.AllocStates)
+			// require.NotEmpty(t, alloc.AllocStates)
+
+			// TODO: Make sure that it is marked lost later.
 
 			if tc.rescheduled {
 				// Register a new node, leave it up, process the followup eval

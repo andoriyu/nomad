@@ -6087,9 +6087,9 @@ type TaskGroup struct {
 	// after this duration since the last known good heartbeat
 	StopAfterClientDisconnect *time.Duration
 
-	// IgnoreClientDisconnect, if set, configures the client to allow placed
+	// MaxClientDisconnect, if set, configures the client to allow placed
 	// allocations for tasks in this group to attempt to resume running without a restart.
-	IgnoreClientDisconnect *time.Duration
+	MaxClientDisconnect *time.Duration
 }
 
 func (tg *TaskGroup) Copy() *TaskGroup {
@@ -9736,7 +9736,7 @@ func (a *Allocation) DisconnectTimeout(now time.Time) time.Time {
 	tg := a.Job.LookupTaskGroup(a.TaskGroup)
 
 	// Prefer the duration from the task group.
-	timeout := tg.IgnoreClientDisconnect
+	timeout := tg.MaxClientDisconnect
 
 	// If not configured, return now
 	if timeout == nil {
@@ -10949,6 +10949,23 @@ func (p *Plan) AppendPreemptedAlloc(alloc *Allocation, preemptingAllocID string)
 	node := alloc.NodeID
 	existing := p.NodePreemptions[node]
 	p.NodePreemptions[node] = append(existing, newAlloc)
+}
+
+// AppendUnknownAlloc marks an allocation as unknown.
+func (p *Plan) AppendUnknownAlloc(alloc *Allocation) {
+	// TODO (derek): review this with Tim
+
+	// Already created a copy in reconiler
+	//newAlloc := new(Allocation)
+	//*newAlloc = *alloc
+
+	// Not sure if these should be set to nil
+	alloc.Job = nil
+	// Strip the resources as it can be rebuilt.
+	alloc.Resources = nil
+
+	existing := p.NodeUpdate[alloc.NodeID]
+	p.NodeUpdate[alloc.NodeID] = append(existing, alloc)
 }
 
 func (p *Plan) PopUpdate(alloc *Allocation) {
