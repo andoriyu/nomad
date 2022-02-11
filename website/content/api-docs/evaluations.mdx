@@ -42,12 +42,16 @@ The table below shows this endpoint's support for
   used as the `last_token` of the next request to fetch additional
   pages.
 
-- `job` `(string: "")` - Filter the list of evaluations to a specific
-  job ID.
+- `filter` `(string: "")` - Expression to filter results.
 
-- `status` `(string: "")` - Filter the list of evaluations to a
-  specific evaluation status (one of `blocked`, `pending`, `complete`,
-  `failed`, or `canceled`).
+- `job` <code>(_deprecated_ string: "")</code> - Filter the list of evaluations
+  to a specific job ID. Deprecated, use
+  [`filter`](/api-docs/evaluations#filter) instead.
+
+- `status` <code>(_deprecated_ string: "")</code> - Filter the list of
+  evaluations to a specific evaluation status (one of `blocked`, `pending`,
+  `complete`, `failed`, or `canceled`). Deprecated, use
+  [`filter`](/api-docs/evaluations#filter) instead.
 
 - `namespace` `(string: "default")` - Specifies the target
   namespace. Specifying `*` will return all evaluations across all
