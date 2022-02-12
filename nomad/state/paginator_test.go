@@ -55,7 +55,7 @@ func TestPaginator(t *testing.T) {
 			iter := newTestIterator(ids)
 			results := []string{}
 
-			paginator := NewPaginator(iter,
+			paginator, err := NewPaginator(iter,
 				structs.QueryOptions{
 					PerPage: tc.perPage, NextToken: tc.nextToken,
 				},
@@ -64,6 +64,7 @@ func TestPaginator(t *testing.T) {
 					results = append(results, result.GetID())
 				},
 			)
+			require.NoError(t, err)
 
 			nextToken := paginator.Page()
 			require.Equal(t, tc.expected, results)
