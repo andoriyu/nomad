@@ -354,20 +354,8 @@ func progressMade(result *structs.PlanResult) bool {
 // or if the underlying nodes are disconnected, and should be used to calculate
 // the reconnect timeout of its allocations. All the nodes returned in the map are tainted.
 func taintedNodes(state State, allocs []*structs.Allocation) (map[string]*structs.Node, error) {
-	iter, err := state.Nodes(nil)
-	if err != nil {
-		fmt.Println(err)
-	}
-	for raw := iter.Next(); raw != nil; raw = iter.Next() {
-		fmt.Println("taintedNodes:  " + raw.(*structs.Node).ID)
-	}
 	out := make(map[string]*structs.Node)
 	for _, alloc := range allocs {
-		fmt.Println("alloc.NodeID: " + alloc.NodeID)
-		if _, ok := out[alloc.NodeID]; ok {
-			continue
-		}
-
 		ws := memdb.NewWatchSet()
 		node, err := state.NodeByID(ws, alloc.NodeID)
 		if err != nil {

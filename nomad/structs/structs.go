@@ -10964,8 +10964,8 @@ func (p *Plan) AppendUnknownAlloc(alloc *Allocation) {
 	// Strip the resources as it can be rebuilt.
 	alloc.Resources = nil
 
-	existing := p.NodeUpdate[alloc.NodeID]
-	p.NodeUpdate[alloc.NodeID] = append(existing, alloc)
+	existing := p.NodeAllocation[alloc.NodeID]
+	p.NodeAllocation[alloc.NodeID] = append(existing, alloc)
 }
 
 func (p *Plan) PopUpdate(alloc *Allocation) {

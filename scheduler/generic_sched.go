@@ -147,10 +147,6 @@ func (s *GenericScheduler) Process(eval *structs.Evaluation) (err error) {
 	// Update our logger with the eval's information
 	s.logger = s.logger.With("eval_id", eval.ID, "job_id", eval.JobID, "namespace", eval.Namespace)
 
-	if eval.TriggeredBy == structs.EvalTriggerNodeUpdate {
-		s.logger.Debug("got here")
-	}
-
 	// Verify the evaluation trigger reason is understood
 	switch eval.TriggeredBy {
 	case structs.EvalTriggerJobRegister, structs.EvalTriggerJobDeregister,
@@ -404,6 +400,11 @@ func (s *GenericScheduler) computeJobAllocs() error {
 		s.plan.AppendStoppedAlloc(stop.alloc, stop.statusDescription, stop.clientStatus, stop.followupEvalID)
 	}
 
+	// Handle disconnect updates
+	for _, update := range results.disconnectUpdates {
+		s.plan.AppendUnknownAlloc(update)
+	}
+
 	// Handle the in-place updates
 	for _, update := range results.inplaceUpdate {
 		if update.DeploymentID != s.deployment.GetID() {
@@ -416,11 +417,6 @@ func (s *GenericScheduler) computeJobAllocs() error {
 	// Handle the annotation updates
 	for _, update := range results.attributeUpdates {
 		s.ctx.Plan().AppendAlloc(update, nil)
-	}
-
-	// Handle disconnect updates
-	for _, update := range results.disconnectUpdates {
-		s.ctx.Plan().AppendUnknownAlloc(update)
 	}
 
 	// Handle reconnect updates

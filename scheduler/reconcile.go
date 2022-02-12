@@ -1332,13 +1332,12 @@ func (a *allocReconciler) createTimeoutLaterEvals(disconnecting allocSet, tgName
 			updatedAlloc.FollowupEvalID = eval.ID
 			a.result.disconnectUpdates[updatedAlloc.ID] = updatedAlloc
 
-			// TODO: It doesn't seem appropriate to include this function's results in these metrics.
+			// TODO (derek): It doesn't seem appropriate to include this function's results in these metrics.
 			// Should we create a new metric?
 			// emitRescheduleInfo(timeoutInfo.alloc, eval)
 		}
 	}
 
-	// TODO: Make sure it's ok to reuse this map.
 	a.appendFollowupEvals(tgName, evals)
 
 	return allocIDToFollowupEvalID

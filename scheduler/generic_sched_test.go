@@ -3190,9 +3190,6 @@ func TestServiceSched_ClientDisconnect_Creates_Updates_and_Evals(t *testing.T) {
 			node.Status = structs.NodeStatusDisconnected
 			require.NoError(t, h.State.UpsertNode(structs.MsgTypeTestSetup, h.NextIndex(), node))
 
-			t.Log("nodeID: " + node.ID)
-			t.Log("allocID: " + alloc.ID)
-
 			// Create a mock evaluation to deal with disconnect
 			evals := []*structs.Evaluation{{
 				Namespace:   structs.DefaultNamespace,
@@ -3235,12 +3232,12 @@ func TestServiceSched_ClientDisconnect_Creates_Updates_and_Evals(t *testing.T) {
 				require.NoError(t, err)
 			})
 
-			require.Len(t, h.Plans[0].NodeUpdate[node.ID], 1)
-			// LEFT OFF HERE>  Somehow the ClientStatus is still running.
-			require.Equal(t, alloc.ID, h.Plans[0].NodeUpdate[node.ID][0].ID)
+			require.Len(t, h.Plans[0].NodeAllocation[node.ID], 1)
+			// Pending Update should be in Unknown status.
+			require.Equal(t, h.Plans[0].NodeAllocation[node.ID][0].ClientStatus, structs.AllocClientStatusUnknown)
 
 			testutil.WaitForResult(func() (bool, error) {
-				err = h.State.UpsertAllocs(structs.MsgTypeTestSetup, h.NextIndex(), h.Plans[0].NodeUpdate[node.ID])
+				err = h.State.UpsertAllocs(structs.MsgTypeTestSetup, h.NextIndex(), h.Plans[0].NodeAllocation[node.ID])
 				require.NoError(t, err, "plan.NodeUpdate")
 				return true, nil
 			}, func(err error) {
@@ -3249,6 +3246,7 @@ func TestServiceSched_ClientDisconnect_Creates_Updates_and_Evals(t *testing.T) {
 
 			alloc, err = h.State.AllocByID(ws, alloc.ID)
 			require.NoError(t, err)
+			require.Equal(t, alloc.ClientStatus, structs.AllocClientStatusUnknown)
 
 			// Allocations have been transitioned to unknown
 			require.Equal(t, structs.AllocDesiredStatusRun, alloc.DesiredStatus)
