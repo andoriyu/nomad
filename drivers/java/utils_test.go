@@ -75,6 +75,15 @@ func TestDriver_parseJavaVersionOutput(t *testing.T) {
 			`OpenJDK Runtime Environment 18.9 (build 11.0.11+9-LTS)`,
 			`OpenJDK 64-Bit Server VM 18.9 (build 11.0.11+9-LTS, mixed mode, sharing)`,
 		},
+		{
+			"OpenJDK on FreeBSD",
+			`openjdk version "17.0.2" 2022-01-18
+			OpenJDK Runtime Environment (build 17.0.2+8-1)
+			OpenJDK 64-Bit Server VM (build 17.0.2+8-1, mixed mode, sharing)`,
+			`17.0.2`,
+			`OpenJDK Runtime Environment (build 17.0.2+8-1)`,
+			`OpenJDK 64-Bit Server VM (build 17.0.2+8-1, mixed mode, sharing)`,
+		},
 	}
 
 	for _, c := range cases {
